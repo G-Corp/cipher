@@ -5,14 +5,14 @@ defmodule Cipher do
   @moduledoc """
     Helpers to encrypt and decrypt data.
   """
-  # handy to have them around
-  unless H.env(:keyphrase) && H.env(:ivphrase) do
-    [:bright, :yellow, "\n",
-     "You need to configure both `keyphrase` and `ivphrase` to compile `Cipher`",
-     "\n", :reset] |> IO.ANSI.format(true) |> IO.puts
+
+  defp key() do
+    H.env(:keyphrase) |> Cipher.Digest.generate_key
   end
-  @k H.env(:keyphrase) |> Cipher.Digest.generate_key
-  @i H.env(:ivphrase) |> Cipher.Digest.generate_iv
+  defp iv() do
+    H.env(:ivphrase) |> Cipher.Digest.generate_iv
+  end
+
 
   @doc """
     Returns encrypted string containing given `data` string
@@ -24,7 +24,7 @@ defmodule Cipher do
     ```
   """
   def encrypt(data) when is_binary(data) do
-    encrypted = :crypto.block_encrypt :aes_cbc128, @k, @i, pad(data)
+    encrypted = :crypto.block_encrypt :aes_cbc128, key(), iv(), pad(data)
     encrypted |> Base.encode64 |> URI.encode_www_form
   end
 
@@ -59,7 +59,7 @@ defmodule Cipher do
 
   defp do_decrypt(decoded) do
     try do
-      :crypto.block_decrypt(:aes_cbc128, @k, @i, decoded) |> depad
+      :crypto.block_decrypt(:aes_cbc128, key(), iv(), decoded) |> depad
     rescue
       _ -> {:error, "Could not decrypt string '#{decoded}'. Maybe it was encrypted with a different key."}
     end
